@@ -60,7 +60,7 @@
   (let [filespec-rel-str (str (tio/->File (str file-key ".edn")))
         filespec-abs     (File. (tio/->File *filedb-root-dir*)
                            filespec-rel-str)]
-    (spyx filespec-abs)
+    ; (spyx filespec-abs)
     filespec-abs))
 
 (s/defn save
@@ -69,12 +69,20 @@
    The arg `file-key` is a unique String identifier which must be a legal relative directory path like:
 
          joe
+
+         cust-joe
+         cust-2019-joe
+
+         cust.joe
+         cust.2019.joe
+
          cust/joe
          cust/2019/joe
 
-   where use of a file separator like `/` on Unix/OSX will result in nested directories. "
+   where use of a file separator like `/` on Unix/OSX will result in nested directories.
+  "
   [file-key :- s/Str
-   data-value :- s/Any]
+ data-value :- s/Any]
   (let [filespec-abs (file-key->file-abs file-key)
         hashfile-str (pr-str (build-hashfile-map data-value))]
     (tio/mkdirs-parent filespec-abs)
