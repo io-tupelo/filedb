@@ -11,15 +11,61 @@
     [java.io File]
     [java.nio.file Path]
     [java.time Instant]
+    [java.util UUID]
     ))
 
 (s/def ^:dynamic *filedb-root-dir* :- s/Str
-   "./filedb.d")
+  "./filedb.d")
 
 (s/defn java-time-instant-now :- Instant
   "Overridable version of java.time.Instant/now (for testability)"
   [] (Instant/now))
 
+;---------------------------------------------------------------------------------------------------
+(s/defn ^:no-doc  lock-file :- File
+  []
+  (let [lock-file (File. (tio/->File *filedb-root-dir*) "lock.file")]
+    (tio/mkdirs-parent lock-file)
+    lock-file))
+
+(def ^:no-doc token-unlocked "filedb.unlocked")
+
+(s/defn ^:no-doc lock-release-force! :- nil
+  []
+  (spit (lock-file) token-unlocked)
+  nil)
+
+(s/defn ^:no-doc lock-release! :- nil
+  [token :- s/Str]
+  (let [token-in (slurp (lock-file))]
+    (when (not= token-in token)
+      (throw (ex-info "Token lock error - release" (vals->map token token-in))))
+    (spit (lock-file) token-unlocked)
+    nil))
+
+(s/defn ^:no-doc lock-acquire! :- nil
+  [token :- s/Str]
+  (let [token-in (slurp (lock-file))]
+    (when (not= token-in token-unlocked)
+      (throw (ex-info "Token lock error - acquire" (vals->map token token-in))))
+    (spit (lock-file) token)
+    nil))
+
+(defn ^:no-doc with-file-lock-impl
+  [forms]
+  `(let [uuid-str# (str (UUID/randomUUID))]
+     (try
+       (lock-acquire! uuid-str#)
+       ~@forms
+       (finally
+         (lock-release! uuid-str#)))))
+
+(defmacro ^:no-doc with-file-lock
+  "Evaluate `forms` using a file system lock under `*filedb-root-dir*` "
+  [& forms]
+  (with-file-lock-impl forms))
+
+;---------------------------------------------------------------------------------------------------
 (s/defn ^:no-doc build-hashfile-map :- tsk/KeyMap
   "Build a HashFile data map"
   [data-value :- s/Any]
@@ -82,28 +128,23 @@
    where use of a file separator like `/` on Unix/OSX will result in nested directories.
   "
   [file-key :- s/Str
- data-value :- s/Any]
-  (let [filespec-abs (file-key->file-abs file-key)
-        hashfile-str (pr-str (build-hashfile-map data-value))]
-    (tio/mkdirs-parent filespec-abs)
-    (spit filespec-abs hashfile-str)))
+   data-value :- s/Any]
+  (with-file-lock
+    (let [filespec-abs (file-key->file-abs file-key)
+          hashfile-str (pr-str (build-hashfile-map data-value))]
+      (tio/mkdirs-parent filespec-abs)
+      (spit filespec-abs hashfile-str))))
 
 (s/defn load :- s/Any
   "Loads and parses an EDN data structure from a HashFile under the directory `*filedb-root-dir*`.
 
-   The arg `file-key` is a unique String identifier which must be a legal relative directory path like:
-
-         joe
-         cust/joe
-         cust/2019/joe
-
-   where use of a file separator like `/` on Unix/OSX will result in nested directories. "
-  [file-key :- s/Str ]
-  (let [filespec-abs (file-key->file-abs file-key)
-        hashfile-str (slurp filespec-abs)
-        hashfile-map (edn/read-string hashfile-str)
-        data-value   (parse-hashfile-map hashfile-map)]
-    data-value))
-
+   The arg `file-key` is a unique String identifier. See filedb.core/save for examples. "
+  [file-key :- s/Str]
+  (with-file-lock
+    (let [filespec-abs (file-key->file-abs file-key)
+          hashfile-str (slurp filespec-abs)
+          hashfile-map (edn/read-string hashfile-str)
+          data-value   (parse-hashfile-map hashfile-map)]
+      data-value)))
 
 

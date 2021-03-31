@@ -10,6 +10,7 @@
   (:import
     [java.io File]
     [java.time Instant]
+    [java.util UUID]
     ))
 
 (def test-dir-prefix "some/tree/dir/struct")
@@ -62,6 +63,7 @@
 (dotest
   (let [tmpdir (tio/create-temp-directory "filedb")]
     (binding [*filedb-root-dir* tmpdir]
+      (lock-release-force!)
       (verify-hashfile-round-trip 5)
       (verify-hashfile-round-trip "abc")
       (verify-hashfile-round-trip [1 2 3])
@@ -71,6 +73,7 @@
       (verify-hashfile-round-trip {:a 1 :b [9 "hello" #{9 8 7 2}]}))))
 
 (dotest
+  (lock-release-force!)
   (verify-hashfile-round-trip 5)
   (verify-hashfile-round-trip "abc")
   (verify-hashfile-round-trip [1 2 3])
@@ -85,6 +88,23 @@
     (let [root-part (tio/->File *filedb-root-dir*)
           test-dir  (File. root-part test-dir-prefix)]
       (tio/delete-directory-recursive test-dir))))
+
+(dotest
+  (lock-release-force!)
+  (throws-not? (lock-acquire! "abc123"))
+  (throws? (lock-acquire! "def"))
+  (throws-not? (lock-release! "abc123"))
+  (throws? (lock-release! "abc123"))
+
+  (when false ; enable to manually inspect macro output
+    (nl)
+    (spy-pretty :impl-result
+      (with-file-lock-impl
+        '[
+          (do-stuff)
+          ])))
+  )
+
 
 
 
