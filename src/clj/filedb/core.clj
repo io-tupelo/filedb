@@ -111,7 +111,6 @@
 
 (s/defn save
   "Saves an EDN data structure to a HashFile under the directory `*filedb-root-dir*`.
-
    The arg `file-key` is a unique String identifier which must be a legal relative directory path like:
 
          joe
@@ -137,7 +136,6 @@
 
 (s/defn load :- s/Any
   "Loads and parses an EDN data structure from a HashFile under the directory `*filedb-root-dir*`.
-
    The arg `file-key` is a unique String identifier. See filedb.core/save for examples. "
   [file-key :- s/Str]
   (with-file-lock
