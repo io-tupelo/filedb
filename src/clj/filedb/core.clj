@@ -1,5 +1,5 @@
 (ns filedb.core
-  (:refer-clojure :exclude [load save ])
+  (:refer-clojure :exclude [load save])
   (:use tupelo.core)
   (:require
     [clojure.edn :as edn]
@@ -8,8 +8,7 @@
     [tupelo.misc :as misc]
     [tupelo.schema :as tsk])
   (:import
-    [java.io File]
-    [java.nio.file Path]
+    [java.io File] ;[java.nio.file Path]
     [java.time Instant]
     [java.util UUID]
     ))
@@ -22,7 +21,7 @@
   [] (Instant/now))
 
 ;---------------------------------------------------------------------------------------------------
-(s/defn ^:no-doc  lock-file :- File
+(s/defn ^:no-doc lock-file :- File
   []
   (let [lock-file (File. (tio/->File *filedb-root-dir*) "lock.file")]
     (tio/mkdirs-parent lock-file)

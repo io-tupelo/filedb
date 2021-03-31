@@ -1,6 +1,8 @@
 (ns tst.filedb.core
-  (:refer-clojure :exclude [load save ])
-  (:use filedb.core tupelo.core tupelo.test)
+  (:refer-clojure :exclude [load save])
+  (:use filedb.core
+        tupelo.core
+        tupelo.test)
   (:require
     [schema.core :as s]
     [tupelo.io :as tio]
