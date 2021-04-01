@@ -86,7 +86,7 @@
 
   ; Without binding `*filedb-root-dir*`, the above test will write under the default
   ; root dir (typically ./filedb.d).  Delete this directory tree when test if complete
-  (when true
+  (when false
     (let [root-part (tio/->File *filedb-root-dir*)
           test-dir  (File. root-part test-dir-prefix)]
       (tio/delete-directory-recursive test-dir))))

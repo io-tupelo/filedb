@@ -6,7 +6,8 @@
     [schema.core :as s]
     [tupelo.io :as tio]
     [tupelo.misc :as misc]
-    [tupelo.schema :as tsk])
+    [tupelo.schema :as tsk]
+    [tupelo.string :as str])
   (:import
     [java.io File] ;[java.nio.file Path]
     [java.time Instant]
@@ -27,7 +28,7 @@
     (tio/mkdirs-parent lock-file)
     lock-file))
 
-(def ^:no-doc token-unlocked "filedb.unlocked")
+(def ^:no-doc token-unlocked (str "filedb.unlocked" \newline))
 
 (s/defn ^:no-doc lock-release-force! :- nil
   []
@@ -37,17 +38,18 @@
 (s/defn ^:no-doc lock-release! :- nil
   [token :- s/Str]
   (let [token-in (slurp (lock-file))]
-    (when (not= token-in token)
+    (when-not (str/nonblank= token-in token)
       (throw (ex-info "Token lock error - release" (vals->map token token-in))))
     (spit (lock-file) token-unlocked)
     nil))
 
 (s/defn ^:no-doc lock-acquire! :- nil
   [token :- s/Str]
-  (let [token-in (slurp (lock-file))]
-    (when (not= token-in token-unlocked)
+  (let [token-out (str (str/trim token) \newline)
+        token-in  (slurp (lock-file))]
+    (when-not (str/nonblank= token-in token-unlocked)
       (throw (ex-info "Token lock error - acquire" (vals->map token token-in))))
-    (spit (lock-file) token)
+    (spit (lock-file) token-out)
     nil))
 
 (defn ^:no-doc with-file-lock-impl
@@ -129,7 +131,8 @@
    data-value :- s/Any]
   (with-file-lock
     (let [filespec-abs (file-key->file-abs file-key)
-          hashfile-str (pr-str (build-hashfile-map data-value))]
+          hashfile-str (pretty-str ; pr-str
+                         (build-hashfile-map data-value))]
       (tio/mkdirs-parent filespec-abs)
       (spit filespec-abs hashfile-str))))
 
