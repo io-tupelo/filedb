@@ -31,14 +31,25 @@
     (let [result (it-> (build-hashfile-map "abc")
                    (update-in it [:data/string] str/quotes->single)
                    (update-in it [:time/instant] str))]
-
-      (is= result {:file/type    :hash/file,
-                   :file/format  :v20.03.28,
-                   :time/instant "1999-12-31T23:44:55.666Z",
-                   :hash/type    :hash/sha-1,
-                   :data/hash    "b87f4bf9b7b07f594430548b653b4998e4b40402",
-                   :data/type    :data/edn,
-                   :data/string  "'abc'"}))))
+      (is= result
+        {:file/type    :hash/file,
+         :file/format  :v20.03.28,
+         :time/instant "1999-12-31T23:44:55.666Z",
+         :hash/type    :hash/sha-1,
+         :data/hash    "b87f4bf9b7b07f594430548b653b4998e4b40402",
+         :data/type    :data/edn,
+         :data/string  "'abc'"}))
+    (let [hashfile-map (build-hashfile-map {:a 1 :b [9 "hello" #{9 8 7 2}]})
+          bogus-map    (assoc hashfile-map :data/hash "bogus!")]
+      (is= hashfile-map
+        {:file/type    :hash/file,
+         :file/format  :v20.03.28,
+         :time/instant "1999-12-31T23:44:55.666Z",
+         :hash/type    :hash/sha-1,
+         :data/hash    "85a1d980c562374161a47db5f9809b9cf8ea4796",
+         :data/type    :data/edn,
+         :data/string  "{:a 1, :b [9 \"hello\" #{2 7 8 9}]}"})
+      (throws? (parse-hashfile-map bogus-map)))))
 
 (defn verify-hashfile-map-round-trip
   [arg]
